@@ -1,0 +1,9 @@
+version: "3.9"
+services:
+  mtik-updates-notifier:
+    build: .
+    restart: on-failure
+    volumes:
+      - ./data:/usr/app/data
+    env_file:
+      - "./.env"

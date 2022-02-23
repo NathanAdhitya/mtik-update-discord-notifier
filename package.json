@@ -1,0 +1,15 @@
+{
+	"name": "mtik-update-notifier",
+	"version": "1.0.0",
+	"main": "index.js",
+	"license": "MIT",
+	"type": "module",
+	"dependencies": {
+		"fast-xml-parser": "^4.0.3",
+		"lowdb": "^3.0.0",
+		"node-fetch": "^3.2.0",
+		"string-strip-html": "^9.1.6",
+		"webhook-discord": "^3.7.8",
+		"dotenv": "^16.0.0"
+	}
+}
