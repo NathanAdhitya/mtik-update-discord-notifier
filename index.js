@@ -41,76 +41,87 @@ const main = async () => {
 	await Promise.all([
 		// Process the changelog
 		(async () => {
-			const res = await fetch(changelogRSS);
-			if (res.ok) {
-				const resp = await res.text();
-				const parser = new XMLParser();
-				const parsedResponse = parser.parse(resp);
-				const items = parsedResponse.rss.channel.item;
+			try {
+				const res = await fetch(changelogRSS);
+				if (res.ok) {
+					const resp = await res.text();
+					const parser = new XMLParser();
+					const parsedResponse = parser.parse(resp);
+					const items = parsedResponse.rss.channel.item;
 
-				let oldestDate = db.data.lastRouterOSDate;
-				items.forEach((v) => {
-					const { title, link, category, description, pubDate } = v;
-					const jsDate = new Date(pubDate).getTime();
+					let oldestDate = db.data.lastRouterOSDate;
+					items.forEach((v) => {
+						const { title, link, category, description, pubDate } =
+							v;
+						const jsDate = new Date(pubDate).getTime();
 
-					if (jsDate <= db.data.lastRouterOSDate) return;
-					if (jsDate > oldestDate) oldestDate = jsDate;
+						if (jsDate <= db.data.lastRouterOSDate) return;
+						if (jsDate > oldestDate) oldestDate = jsDate;
 
-					const strippedDesc =
-						stripHtml(description).result.split("\n");
-					// shorten desc max 8 lines
-					strippedDesc.length = Math.min(strippedDesc.length, 8);
+						const strippedDesc =
+							stripHtml(description).result.split("\n");
+						// shorten desc max 8 lines
+						strippedDesc.length = Math.min(strippedDesc.length, 8);
 
-					const embed = new MessageBuilder()
-						.setName("Mikrotik Changelog Bot")
-						.setTitle(`New RouterOS version published | ${title}`)
-						.setColor(
-							category in embedColors
-								? embedColors[category]
-								: "#23272A"
-						)
-						.setDescription(
-							`${strippedDesc.join(
-								"\n"
-							)}...\n[Click here to read the full changelog](${link})`
-						)
-						.setTime(jsDate / 1000)
-						.setURL(link);
+						const embed = new MessageBuilder()
+							.setName("Mikrotik Changelog Bot")
+							.setTitle(
+								`New RouterOS version published | ${title}`
+							)
+							.setColor(
+								category in embedColors
+									? embedColors[category]
+									: "#23272A"
+							)
+							.setDescription(
+								`${strippedDesc.join(
+									"\n"
+								)}...\n[Click here to read the full changelog](${link})`
+							)
+							.setTime(jsDate / 1000)
+							.setURL(link);
 
-					embedsToSend.push(embed);
-				});
+						embedsToSend.push(embed);
+					});
 
-				db.data.lastRouterOSDate = oldestDate;
-			} else {
-				console.error(
-					`Error fetching ${changelogRSS}. Received a ${res.status} status code.`
-				);
+					db.data.lastRouterOSDate = oldestDate;
+				} else {
+					console.error(
+						`Error fetching ${changelogRSS}. Received a ${res.status} status code.`
+					);
+				}
+			} catch (e) {
+				console.error(e);
 			}
 		})(),
 		// Process the Winbox
 		(async () => {
-			const res = await fetch(winboxPage);
-			if (res.ok) {
-				const resp = await res.text();
-				const parsedVer = winboxRegex.exec(resp)[1];
+			try {
+				const res = await fetch(winboxPage);
+				if (res.ok) {
+					const resp = await res.text();
+					const parsedVer = winboxRegex.exec(resp)[1];
 
-				// Skip if the version listed on the website is the same
-				if (db.data.lastWinBoxVersion === parsedVer) return;
-				db.data.lastWinBoxVersion = parsedVer;
+					// Skip if the version listed on the website is the same
+					if (db.data.lastWinBoxVersion === parsedVer) return;
+					db.data.lastWinBoxVersion = parsedVer;
 
-				const embed = new MessageBuilder()
-					.setName("Mikrotik Changelog Bot")
-					.setTitle(`New WinBox version published | ${parsedVer}`)
-					.setColor("#0775A1")
-					.setDescription(`A new WinBox version was found.`)
-					.setTime()
-					.setURL(winboxPage);
+					const embed = new MessageBuilder()
+						.setName("Mikrotik Changelog Bot")
+						.setTitle(`New WinBox version published | ${parsedVer}`)
+						.setColor("#0775A1")
+						.setDescription(`A new WinBox version was found.`)
+						.setTime()
+						.setURL(winboxPage);
 
-				embedsToSend.push(embed);
-			} else {
-				console.error(
-					`Error fetching ${winboxPage}. Received a ${res.status} status code.`
-				);
+					embedsToSend.push(embed);
+				} else {
+					console.error(
+						`Error fetching ${winboxPage}. Received a ${res.status} status code.`
+					);
+				}
+			} catch (e) {
+				console.error(e);
 			}
 		})(),
 	]);
@@ -121,7 +132,11 @@ const main = async () => {
 	// uh, so everything is in order.
 	for (const v of embedsToSend.reverse()) {
 		// Send all the messages
-		await Hook.send(v);
+		try {
+			await Hook.send(v);
+		} catch (e) {
+			console.error(e);
+		}
 	}
 };
 
