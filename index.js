@@ -140,11 +140,21 @@ const main = async () => {
 	}
 };
 
-await main();
+try {
+	await main();
+} catch (e) {
+	console.log("Error while running main function.");
+	console.error(e);
+}
 
 const scheduler = () =>
 	setTimeout(async () => {
-		await main();
+		try {
+			await main();
+		} catch (e) {
+			console.log("Error while running main function.");
+			console.error(e);
+		}
 		scheduler();
 	}, 60000);
 
