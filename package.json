@@ -5,11 +5,16 @@
 	"license": "MIT",
 	"type": "module",
 	"dependencies": {
+		"axios": "^0.27.2",
+		"axios-retry": "^3.2.5",
+		"dotenv": "^16.0.0",
+		"esm-wallaby": "^3.2.26",
 		"fast-xml-parser": "^4.0.3",
 		"lowdb": "^3.0.0",
-		"node-fetch": "^3.2.0",
 		"string-strip-html": "^9.1.6",
-		"webhook-discord": "^3.7.8",
-		"dotenv": "^16.0.0"
+		"webhook-discord": "^3.7.8"
+	},
+	"devDependencies": {
+		"eslint": "^8.14.0"
 	}
 }

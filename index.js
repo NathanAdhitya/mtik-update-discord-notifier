@@ -1,18 +1,22 @@
 import "dotenv/config";
 if (!process.env.WEBHOOK_URL) {
-	console.error("WEBHOOK_URL environment variable not set.");
+	logger.error("WEBHOOK_URL environment variable not set.");
 	process.exit(1);
 }
 
-import fetch from "node-fetch";
+import axios from "axios";
+import axiosRetry from "axios-retry";
 import { XMLParser } from "fast-xml-parser";
 import { MessageBuilder, Webhook } from "webhook-discord";
 import { stripHtml } from "string-strip-html";
+import dns from "dns/promises";
+import net from "net";
 
 import { join, dirname } from "path";
 import { Low, JSONFile } from "lowdb";
-import { fileURLToPath } from "url";
+import URL, { fileURLToPath } from "url";
 
+axiosRetry(axios, { retryDelay: axiosRetry.exponentialDelay });
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /** Local data, to track last published date and last WinBox version. */
@@ -20,13 +24,10 @@ const file = join(__dirname, "data/data.json");
 const adapter = new JSONFile(file);
 const db = new Low(adapter);
 
-await db.read();
-db.data ||= { lastWinBoxVersion: "", lastRouterOSDate: 0 };
-
 const Hook = new Webhook(process.env.WEBHOOK_URL);
 const changelogRSS = "https://mikrotik.com/download.rss";
 const winboxPage = "https://mikrotik.com/download";
-const winboxRegex = /WinBox (\d+.\d+) \(64\-bit\)/;
+const winboxRegex = /WinBox (\d+.\d+) \(64-bit\)/;
 
 const embedColors = {
 	"Long-term": "#3498DB",
@@ -35,6 +36,58 @@ const embedColors = {
 	Development: "#992D22",
 };
 
+function dateLog() {
+	return `[${new Date().toLocaleString()}]`;
+}
+
+const logger = {
+	log: (...args) => console.log(dateLog(), ...args),
+	error: (...args) => console.error(dateLog(), ...args),
+};
+
+const DNSResolver = new dns.Resolver({ timeout: 5000, tries: 5 });
+const mikrotikDotComDNS = {
+	ip: null,
+	lastSuccessful: 0,
+};
+async function dnsCache() {
+	// Refresh every 24h. Attempt at every request.
+	if (mikrotikDotComDNS.lastSuccessful <= Date.now() - 24 * 60 * 60 * 1000) {
+		try {
+			const res = (await DNSResolver.resolve4("mikrotik.com"))[0];
+			if (typeof res === "string") {
+				mikrotikDotComDNS.ip = res;
+				mikrotikDotComDNS.lastSuccessful = Date.now();
+			}
+			logger.log("Renew DNS success", res);
+		} catch (e) {
+			logger.error("DNS resolve failure", e);
+		}
+	}
+
+	return mikrotikDotComDNS.ip;
+}
+
+axios.interceptors.request.use(function (config) {
+	var url = URL.parse(config.url);
+
+	if (net.isIP(url.hostname)) {
+		// Skip
+		return config;
+	} else {
+		return dnsCache().then(function (response) {
+			config.headers = config.headers || {};
+			config.headers.Host = url.hostname; // put original hostname in Host header
+
+			url.hostname = response;
+			delete url.host; // clear hostname cache
+			config.url = URL.format(url);
+
+			return config;
+		});
+	}
+});
+
 const main = async () => {
 	const embedsToSend = [];
 
@@ -42,9 +95,9 @@ const main = async () => {
 		// Process the changelog
 		(async () => {
 			try {
-				const res = await fetch(changelogRSS);
-				if (res.ok) {
-					const resp = await res.text();
+				const res = await axios.get(changelogRSS, { timeout: 10000 });
+				if (res.status === 200) {
+					const resp = res.data;
 					const parser = new XMLParser();
 					const parsedResponse = parser.parse(resp);
 					const items = parsedResponse.rss.channel.item;
@@ -86,20 +139,20 @@ const main = async () => {
 
 					db.data.lastRouterOSDate = oldestDate;
 				} else {
-					console.error(
+					logger.error(
 						`Error fetching ${changelogRSS}. Received a ${res.status} status code.`
 					);
 				}
 			} catch (e) {
-				console.error(e);
+				logger.error(e);
 			}
 		})(),
 		// Process the Winbox
 		(async () => {
 			try {
-				const res = await fetch(winboxPage);
-				if (res.ok) {
-					const resp = await res.text();
+				const res = await axios.get(winboxPage, { timeout: 10000 });
+				if (res.status === 200) {
+					const resp = res.data;
 					const parsedVer = winboxRegex.exec(resp)[1];
 
 					// Skip if the version listed on the website is the same
@@ -116,12 +169,12 @@ const main = async () => {
 
 					embedsToSend.push(embed);
 				} else {
-					console.error(
+					logger.error(
 						`Error fetching ${winboxPage}. Received a ${res.status} status code.`
 					);
 				}
 			} catch (e) {
-				console.error(e);
+				logger.error(e);
 			}
 		})(),
 	]);
@@ -135,29 +188,34 @@ const main = async () => {
 		try {
 			await Hook.send(v);
 		} catch (e) {
-			console.error(e);
+			logger.error(e);
 		}
 	}
 };
+(async () => {
+	try {
+		await db.read();
+		db.data ||= { lastWinBoxVersion: "", lastRouterOSDate: 0 };
 
-try {
-	await main();
-} catch (e) {
-	console.log("Error while running main function.");
-	console.error(e);
-}
+		await main();
+
+		// reschedule in 60 seconds
+		scheduler();
+	} catch (e) {
+		logger.log("Error while running main function.");
+		logger.error(e);
+	}
+})();
 
 const scheduler = () =>
 	setTimeout(async () => {
 		try {
 			await main();
 		} catch (e) {
-			console.log("Error while running main function.");
-			console.error(e);
+			logger.log("Error while running main function.");
+			logger.error(e);
 		}
 		scheduler();
 	}, 60000);
 
-// reschedule in 60 seconds
-scheduler();
-console.log("Program initialized.");
+logger.log("Program initialized.");
