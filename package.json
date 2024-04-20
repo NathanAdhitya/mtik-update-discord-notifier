@@ -1,20 +1,25 @@
 {
-	"name": "mtik-update-notifier",
-	"version": "1.0.0",
-	"main": "index.js",
-	"license": "MIT",
-	"type": "module",
-	"dependencies": {
-		"axios": "^0.27.2",
-		"axios-retry": "^3.2.5",
-		"dotenv": "^16.0.0",
-		"esm-wallaby": "^3.2.26",
-		"fast-xml-parser": "^4.0.3",
-		"lowdb": "^3.0.0",
-		"string-strip-html": "^9.1.6",
-		"webhook-discord": "^3.7.8"
-	},
-	"devDependencies": {
-		"eslint": "^8.14.0"
-	}
+  "name": "mtik-update-notifier",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "start:once": "node index.js --once",
+    "debug": "node index.js --debug"
+  },
+  "dependencies": {
+    "axios": "^0.27.2",
+    "axios-retry": "^3.2.5",
+    "dotenv": "^16.0.0",
+    "esm-wallaby": "^3.2.26",
+    "fast-xml-parser": "^4.0.3",
+    "lowdb": "^3.0.0",
+    "string-strip-html": "^9.1.6",
+    "webhook-discord": "^3.7.8"
+  },
+  "devDependencies": {
+    "eslint": "^8.14.0"
+  }
 }
