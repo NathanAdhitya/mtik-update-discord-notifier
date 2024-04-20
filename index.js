@@ -6,6 +6,7 @@ if (!process.env.WEBHOOK_URL) {
 
 const debugMode = process.argv.includes("--debug");
 const runOnceMode = process.argv.includes("--once");
+const REQUEST_TIMEOUT = process.env.REQUEST_TIMEOUT || 30000;
 
 import axios from "axios";
 import axiosRetry from "axios-retry";
@@ -70,7 +71,7 @@ const main = async () => {
     // Process the changelog
     ...changelogRSSList.map(async (rss) => {
       try {
-        const res = await axios.get(rss, { timeout: 20000 });
+        const res = await axios.get(rss, { timeout: REQUEST_TIMEOUT });
         if (res.status === 200) {
           const resp = res.data;
           const parser = new XMLParser();
@@ -136,7 +137,7 @@ const main = async () => {
     // Process the Winbox
     (async () => {
       try {
-        const res = await axios.get(winboxPage, { timeout: 20000 });
+        const res = await axios.get(winboxPage, { timeout: REQUEST_TIMEOUT });
         if (res.status === 200) {
           const resp = res.data;
           const parsedVer = winboxRegex.exec(resp)[1];
