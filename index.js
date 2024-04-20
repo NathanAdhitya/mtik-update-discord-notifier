@@ -6,7 +6,11 @@ if (!process.env.WEBHOOK_URL) {
 
 const debugMode = process.argv.includes("--debug");
 const runOnceMode = process.argv.includes("--once");
-const REQUEST_TIMEOUT = process.env.REQUEST_TIMEOUT || 30000;
+const REQUEST_TIMEOUT = Number.isInteger(
+  Number.parseInt(process.env.REQUEST_TIMEOUT)
+)
+  ? Number.parseInt(process.env.REQUEST_TIMEOUT)
+  : 30000;
 
 import axios from "axios";
 import axiosRetry from "axios-retry";
