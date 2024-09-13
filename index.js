@@ -38,7 +38,7 @@ const changelogRSSList = [
 ];
 const winboxPage = "https://mikrotik.com/download";
 const changelogsLink = "https://mikrotik.com/download/changelogs";
-const winboxRegex = /WinBox (\d+.\d+) \(64-bit\)/;
+const winboxRegex = />WinBox (4.+)<\/a>/;
 
 const embedColors = {
   "Long-term": "#3498DB",
